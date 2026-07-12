@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > 本文档为产品需求文档（PRD），描述需求与设计约束，不包含最终实现。
-> 状态：**草案**。涉及"待实测验证"的条目需在实现前于真实环境确认。
+> 状态：**FR1-FR4 已实现并实测，结论已封闭**——几何修正正确生效，但窗口化 GFN Chrome 因 `InWorld` 基础设施级识别结构性失败，**仍不支持自动化任务**（详见 §5.2-5.4）。FR1-FR4 的代码改动本身正确、保留。
 > 前置文档：[GeForce NOW 云游戏窗口支持 PRD](./geforce-now-support-prd.md)（下称"主 PRD"），特别是其风险 R8。
 
 ## 1. 背景与目标
@@ -113,21 +113,27 @@ gfn_chrome 分支对齐 gfn_app 分支的写法：
 | 模板匹配 / OCR 的固定 `roi` | ⚠️ 视余量而定 | 内容比 ROI 作者预期低 H px；ROI 下方余量 ≥ H 的节点仍可命中，紧贴内容的 ROI 漏检 |
 | 字面固定坐标 `target: [x,y,w,h]`、自定义动作硬编码坐标 | ❌ 系统性偏移 | 点击落点比预期高 H px |
 
-### 5.2 实测验证计划（实现 FR1-FR4 后执行）
+### 5.2 实测验证结论（已执行，0.0.11–0.0.14-gfn-test）
 
-1. 窗口化 GFN Chrome + 自动缩放生效，运行代表性任务：`MakeCoffee`（密集固定 ROI/OCR）与 `PinkPawHeist`（自定义动作 + 固定坐标混合）。
-2. 从 `maa.log` 统计 `Node.Recognition.Failed` 分布，输出"失败节点清单 + 坐标来源分类"。
-3. 结论分流：
-   - 失败集中在少量节点 → 逐节点扩 ROI / 调整坐标，窗口化即告可用；
-   - 失败广泛 → 启动 §5.3 补偿方案评估，窗口化维持"实验性"标注，F11 全屏仍为推荐路径。
+实施 FR1-FR4 并多轮实测后结论明确，**窗口化 GFN Chrome 目前无法支撑自动化任务**：
 
-### 5.3 补偿方案候选（开放问题，本期不实现）
+- `InWorld`（`Interface/Scene/Status.json`，几乎所有任务都依赖的基础在世场景判定）要求 `EscMenuButton`（ROI `[1208,5,60,60]`）与 `TasksMenuButton`（ROI `[0,105,60,60]`）**同时**命中，二者 ROI 均贴近画面顶部、仅 60px 高。+37px 的头部平移使这两个图标实际所在行与 ROI 重叠不足一半，`TemplateMatch` 基本不可能命中。
+- 实测复现（0.0.13-gfn-test）：`InWorld` 识别连续失败 120 次，`SceneAnyEnterWorld` 陷入约 3 分钟的轮询死循环，任务从未进入具体业务逻辑（对应此前 R8 记录的"InWorld 失败 5563 次"是同一根因，并非偶发）。
+- 结论：§5.1 表格中"识别驱动的点击不受平移影响"仅在**识别已经命中**的前提下成立；当 ROI 本身贴近顶部、平移量超过其半高时，识别在命中阶段就已失败，与该行结论无关的是更早的一道门槛。这不是"少数节点需要扩 ROI"的局部问题，而是基础设施级阻塞。
 
-| 候选 | 思路 | 待验证点 |
+### 5.3 补偿方案候选（已实测排查，结论见下）
+
+| 候选 | 思路 | 结论 |
 | --- | --- | --- |
-| Chrome 子窗口控制器 | 控制器直连 `Chrome_RenderWidgetHostHWND` 子窗口（网页内容区，不含浏览器自绘头部） | MaaToolkit 是否枚举子窗口；`PrintWindow` 对 GPU 合成子窗口是否黑屏；Seize 输入坐标基准 |
-| 上游 MaaFW 截图裁剪选项 | 向 MaaFramework 提议 Win32 控制器新增客户区裁剪（offset/rect）选项 | 上游接受度与排期；MaaNTE 侧仅需 interface/控制器参数透传 |
-| F11 全屏兜底（现状） | 16:9 显示器用户维持主 PRD R8 前提 | 无——已实测可用，作为文档化兜底 |
+| Chrome 子窗口控制器 | 控制器直连 `Chrome_RenderWidgetHostHWND` 子窗口（网页内容区，不含浏览器自绘头部） | **已排除（实测确认，0.0.14-gfn-test-exp）**。`PrintWindow` 配合 `PW_CLIENTONLY \| PW_RENDERFULLCONTENT` 标志对该子窗口截图确认可行（真实拿到过无头部的干净 1280x721 画面），但 `MaaToolkitDesktopWindowFindAll`（`interface.json` 的 `class_regex`/`window_regex` 匹配所依赖的底层枚举）**只枚举顶层窗口**，声明 `class_regex` 指向子窗口的实验控制器实测命中 0 个窗口。`MaaController.h` 也未提供运行时更换已创建控制器目标 hwnd 的 API（`MaaWin32ControllerCreate` 仅在创建时接受一次 `hWnd`）。`MaaCustomControllerCreate` 虽支持任意自定义截图逻辑，但 `interface.json` 的控制器 `type` 枚举（`Adb/Win32/MacOS/PlayCover/Gamepad/WlRoots`）不含 `Custom`，MXU 未声明式暴露该能力——需要改 MXU 自身（独立仓库），超出 MaaNTE 范围。三条路径均已验证不可行。 |
+| 上游 MaaFW 截图裁剪选项 | 向 MaaFramework 提议 Win32 控制器新增客户区裁剪（offset/rect）选项 | **唯一仍开放的架构级方向**。子窗口方案的排除进一步说明：只有 MaaFramework 引擎自身新增裁剪能力（或子窗口枚举能力），才能让窗口化 GFN Chrome 具备可用性；MaaNTE 侧无法自行绕过。上游接受度与排期未知。 |
+| F11 全屏兜底（现状） | 16:9 显示器用户维持主 PRD R8 前提 | 已实测可用，**当前唯一可用路径**（连同 GFN 原生客户端 `gfn_app`，后者窗口化本就可用）。 |
+
+### 5.4 本 PRD 现状小结
+
+FR1-FR4 修复的两个真实缺陷（客户区目标算错导致的黑边失真、`interface.json` 短边缩放导致的整帧失真、错误强加 `WS_CAPTION`）本身是正确且必要的——`GFN-Chrome` 控制器缩放后画面几何已确认正确（无黑边、无失真，视频区域精确 1280x720）。但 §5.2 的实测表明，几何修正不足以让窗口化 GFN Chrome 具备自动化可用性：基础设施级识别节点（`InWorld`）因贴顶 ROI 而结构性失败，且 §5.3 确认当前工具链下没有可在 MaaNTE 范围内实现的规避方案。
+
+因此：FR1-FR4 的代码改动应当保留（修的都是真 bug，几何正确性本身有价值，且不影响 `gfn_app`/本地客户端路径），但**窗口化 GFN Chrome 仍应视为不支持自动化任务**，文档与用户提示中继续引导 F11 全屏或 GFN 原生客户端。§7 验收标准与主 PRD R8 状态需相应更新为"几何已修正，但自动化不可用，结论已实测封闭"。
 
 ## 6. 风险与开放问题
 
@@ -141,21 +147,23 @@ gfn_chrome 分支对齐 gfn_app 分支的写法：
 
 ## 7. 验收标准
 
-- [ ] gfn_chrome 模式下 Agent 启动自动把客户区调整为 1280x(720+H)，日志输出客户区/有效视频双尺寸；本地客户端与 gfn_app 路径行为回归一致。
-- [ ] 不再对 Chrome 窗口调用 `show_title_bar()`（无 `WS_CAPTION` 强加行为）。
-- [ ] 缩放失败时任务不中断，`reason=gfn_chrome_resize_failed`，PrintT 引导消息可见。
-- [ ] `screen.scaling_factors()` 在缩放成功后返回 (1.000, 1.000)（有效视频尺寸口径）。
-- [ ] `custom_action_param.header_height` 覆盖生效（异常值被校验拒绝）。
-- [ ] 5 个 locale 新增/更新键完整同步，`pnpm exec prettier --check` 通过。
-- [ ] §5.2 实测报告产出：失败节点清单 + 分类 + 窗口化可用性结论，回填主 PRD R8 与本 PRD 状态。
+- [x] gfn_chrome 模式下 Agent 启动自动把客户区调整为 1280x(720+H)，日志输出客户区/有效视频双尺寸；本地客户端与 gfn_app 路径行为回归一致。（实测确认，H 已由 26px 修正为实测值 37px）
+- [x] 不再对 Chrome 窗口调用 `show_title_bar()`（无 `WS_CAPTION` 强加行为）。
+- [x] 缩放失败时任务不中断，`reason=gfn_chrome_resize_failed`，PrintT 引导消息可见。
+- [x] `screen.scaling_factors()` 在缩放成功后返回 (1.000, 1.000)（有效视频尺寸口径）。
+- [x] `custom_action_param.header_height` 覆盖生效（异常值被校验拒绝）。
+- [x] 5 个 locale 新增/更新键完整同步，`prettier --check` 通过。
+- [x] §5.2 实测报告产出：失败节点清单 + 分类 + 窗口化可用性结论，回填主 PRD R8 与本 PRD 状态——**结论为负**：几何已修正，但 `InWorld` 基础设施级识别因贴顶 ROI 结构性失败，窗口化 GFN Chrome 当前不支持自动化任务（见 §5.2/5.4）。
 
 ## 8. 后续工作
 
 按仓库 PR 约定拆分实现（全部合入 `dev`，分支命名 `feat/<name>`）：
 
-1. `win32_process.py` FR1/FR2 + `main.py` FR3；
-2. `resize_game_window` FR4 + maafocus 消息 + 5 locale；
-3. FR5 视觉校准（独立 PR，依赖实测）；
-4. §5.2 实测与文档回填（主 PRD R8 状态更新、用户使用说明）。
+1. `win32_process.py` FR1/FR2 + `main.py` FR3；✅ 已实现
+2. `resize_game_window` FR4 + maafocus 消息 + 5 locale；✅ 已实现
+3. ~~FR5 视觉校准~~：**不再推进**。§5.2/5.3 已确认几何修正不是当前的瓶颈（`InWorld` 在识别阶段即失败，视觉校准无法解决），除非上游 MaaFW 具备裁剪能力后问题性质改变，否则校准头部高度已无实际意义。
+4. §5.2 实测与文档回填：✅ 已完成（本节 + 主 PRD R8 交叉引用）。
+
+远期：视上游 MaaFramework 是否采纳 §5.3 的截图裁剪选项提议（当前唯一仍开放的架构级方向）决定是否重启窗口化 GFN Chrome 的可用性评估；R5 运行中窗口尺寸看护（优先级已随窗口化 GFN Chrome 结论下调）。
 
 远期：§5.3 补偿方案评估；R5 运行中窗口尺寸看护。
