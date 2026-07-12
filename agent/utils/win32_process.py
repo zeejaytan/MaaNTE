@@ -72,6 +72,10 @@ DEFAULT_WINDOW_RESIZE_SETTLE_MS = 300
 GFN_CHROME_PROCESS_NAME = "chrome.exe"
 GFN_CHROME_WINDOW_CLASS = "Chrome_WidgetWin_1"
 GFN_CHROME_TITLE_REGEX = r"NTE.*on GeForce NOW"
+# Chrome 网页版页面自绘头部（标题条）高度：物理像素（进程已 SetProcessDPIAware），
+# Windows 缩放 100% 下实测约 26px（geforce-now-support-prd.md R8）。
+# 随 Windows DPI 缩放与 Chrome 版本可能漂移，可经 gfn_chrome_header_height 参数覆盖
+GFN_CHROME_HEADER_HEIGHT = 26
 # 原生客户端：标题已实测确认（GFNWindowMover 进程选择器截图），与 Chrome 版一致；
 # 窗口类待运行时日志确认（PRD 风险 R3），探测时不过滤类名
 GFN_APP_PROCESS_NAME = "GeForceNOW.exe"
@@ -604,13 +608,17 @@ def ensure_game_window_resolution(
     height,
     process_name=None,
     settle_ms=DEFAULT_WINDOW_RESIZE_SETTLE_MS,
+    gfn_chrome_header_height=None,
     **kwargs,
 ):
     """Resize the game window client area to the target resolution.
 
     process_name 为 None 时自动探测运行模式（本地 / GFN Chrome / GFN 原生客户端）
     并路由到对应窗口；显式传入 process_name 则维持旧行为直接按进程名查找。
-    返回 dict 额外携带 "mode" 键供调用方区分运行模式。
+    gfn_chrome_header_height 仅对 gfn_chrome 模式生效：页面头部高度（物理像素），
+    None 时取 GFN_CHROME_HEADER_HEIGHT。
+    返回 dict 额外携带 "mode" 键供调用方区分运行模式；gfn_chrome 模式下另携带
+    "header_height" 与 "video_size"（头部下方有效视频尺寸）。
     """
     if process_name is not None:
         result = ensure_process_client_size(
@@ -669,22 +677,53 @@ def ensure_game_window_resolution(
         return result
 
     if mode == GAME_WINDOW_MODE_GFN_CHROME:
+        # GFN Chrome 网页版为 Chrome 自绘无边框窗口：页面头部（标题条）占据
+        # 客户区顶部 header_height 像素，客户区目标须加上头部高度，使头部
+        # 下方的串流视频恢复原生 1:1 基准分辨率（gfn-chrome-window-resize-prd.md）。
+        # manage_title_bar=False：不向 Chrome 无边框窗口强加 WS_CAPTION。
+        header_height = (
+            GFN_CHROME_HEADER_HEIGHT
+            if gfn_chrome_header_height is None
+            else int(gfn_chrome_header_height)
+        )
+        if header_height < 0:
+            raise ValueError(
+                f"gfn_chrome_header_height must be >= 0, got {header_height}"
+            )
+        target_width = int(width)
+        target_client_height = int(height) + header_height
         passthrough = {
             k: v
             for k, v in kwargs.items()
-            if k not in ("hwnd_class", "require_title", "title_regex")
+            if k not in ("hwnd_class", "require_title", "title_regex", "manage_title_bar")
         }
         result = ensure_process_client_size(
             GFN_CHROME_PROCESS_NAME,
-            width,
-            height,
+            target_width,
+            target_client_height,
             settle_ms=settle_ms,
             hwnd_class=GFN_CHROME_WINDOW_CLASS,
             require_title=True,
             title_regex=GFN_CHROME_TITLE_REGEX,
+            manage_title_bar=False,
             **passthrough,
         )
         result["mode"] = mode
+        result["header_height"] = header_height
+        after = result.get("after")
+        result["video_size"] = (
+            (after[0], max(0, after[1] - header_height)) if after is not None else None
+        )
+        if not result.get("success"):
+            # 缩放未生效时优雅降级：任务继续运行，由调用方引导用户手动把
+            # 客户区调整为 目标高度+头部高度，或退回 F11 全屏（16:9 显示器）
+            _log(
+                f"GFN chrome window resize failed ({result.get('reason')}), "
+                f"client size={after}, expected {target_width}x{target_client_height} "
+                f"(video {target_width}x{int(height)} + header {header_height})"
+            )
+            result["success"] = True
+            result["reason"] = "gfn_chrome_resize_failed"
         return result
 
     result = ensure_process_client_size(

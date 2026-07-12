@@ -91,6 +91,12 @@ def _parse_optional_resize_kwargs(raw_param):
         kwargs["tolerance"] = int(params["tolerance"])
     if "settle_ms" in params:
         kwargs["settle_ms"] = int(params["settle_ms"])
+    if "header_height" in params:
+        # GFN Chrome 页面头部高度覆盖值（物理像素），供 DPI ≠ 100% 的用户使用
+        header_height = int(params["header_height"])
+        if header_height <= 0:
+            raise ValueError("header_height must be a positive integer")
+        kwargs["gfn_chrome_header_height"] = header_height
     return kwargs
 
 
@@ -129,6 +135,18 @@ class ResizeGameWindow(CustomAction):
         mode = result.get("mode")
         if mode == GAME_WINDOW_MODE_GFN_CHROME:
             PrintT(context, "gfn.mode_chrome_detected")
+            if result.get("reason") == "gfn_chrome_resize_failed":
+                # 引导手动把客户区调到 视频基准 + 页面头部 的目标尺寸
+                header_height = int(result.get("header_height") or 0)
+                PrintT(
+                    context,
+                    "gfn.chrome_resize_failed",
+                    width,
+                    height + header_height,
+                )
+            elif result.get("reason") == "resized":
+                # 缩放已生效，但串流渲染分辨率在会话建立时固定、不追溯跟随
+                PrintT(context, "gfn.chrome_stream_resolution_hint", width, height)
         elif mode == GAME_WINDOW_MODE_GFN_APP:
             PrintT(context, "gfn.mode_app_detected")
             if result.get("reason") == "gfn_app_resize_failed":

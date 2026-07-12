@@ -34,6 +34,7 @@
 | [DeepWiki — MaaNTE](https://deepwiki.com/1bananachicken/MaaNTE) | 带 AI 的在线项目文档速览 |
 | [Pipeline 协议](https://maafw.com/docs/3.1-PipelineProtocol/) | MaaFramework 官方 Pipeline 协议全文 |
 | [GeForce NOW 支持 PRD](./geforce-now-support-prd.md) | GFN 云游戏窗口发现与控制器支持的需求文档（草案） |
+| [GFN Chrome 窗口自动缩放 PRD](./gfn-chrome-window-resize-prd.md) | GFN Chrome 网页版窗口化模式自动缩放的需求文档（草案） |
 
 ### Tier 3 — 规范与约束
 

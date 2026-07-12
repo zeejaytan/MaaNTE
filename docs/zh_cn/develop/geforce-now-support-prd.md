@@ -144,7 +144,7 @@ get_pids_by_name("HTGame.exe")          # 进程快照取 PID 集合
 | 运行模式 | 行为 |
 | --- | --- |
 | 本地客户端 | 现状不变：`ensure_game_window_resolution()` 强制客户区 1280x720 |
-| GFN Chrome | 走 `resize_client_area()` 常规路径；但窗口模式下页面头部仍破坏帧几何（R8），缩放无法根治，实际引导用户 F11 全屏 |
+| GFN Chrome | 走 `resize_client_area()` 常规路径；但窗口模式下页面头部仍破坏帧几何（R8），缩放无法根治，实际引导用户 F11 全屏。**后续改进见 [GFN Chrome 网页版窗口自动缩放 PRD](./gfn-chrome-window-resize-prd.md)** |
 | GFN 原生客户端 | **自动缩放**：走 `resize_client_area(manage_title_bar=False)`，保持无边框、不强制 `WS_CAPTION`（GFNWindowMover 源码证实 GFN 窗口接受标准 `MoveWindow` 缩放）。缩放未生效时优雅降级（`reason=gfn_app_resize_failed`，任务不中断），提示用户在 GFN 设置固定 720p 串流或用窗口工具调整 |
 
 ### FR5 — 用户可见提示（`utils/maafocus`）
@@ -175,7 +175,7 @@ get_pids_by_name("HTGame.exe")          # 进程快照取 PID 集合
 | R5 | 用户同时开多个 Chrome 窗口（含多个 GFN 页签）的极端情况 | 选窗歧义 | FR2 的标题过滤 + 现有 `selected_hwnd`/滞回机制兜底；GUI 侧用户可手动选窗 |
 | R6 | GFN 自身的排队、闲置踢出、会话到期画面 | 任务流程外状态，Pipeline 无法恢复 | 非目标（§1.3）；提示用户保持会话活跃，长任务失败时日志可定位 |
 | R7 | ~~任务级控制器限制与新控制器名的兼容性~~ **已关闭**：已梳理全部 12 个限定控制器的任务。GFN 两控制器与 `Win32-Front` 模式一致（PrintWindow + Seize），10 个任务已在配置中放开 `GFN-Chrome`/`GFN-App`（PinkPawHeist、MakeCoffee、MakeCoffeeLite、Furniture、BagelSpam、SoundDodge、RealTime、SyncCharacterAbilityCityAbility、ClaimRewards、WithdrawMoney）；`FountainCheckin`、`WitchDivination` 保持仅 `Win32-Front`——两者依赖抓包定位坐标（`Navi/coordinate_position.py`，pcap/pktmon），GFN 场景下游戏运行在云端、本机无游戏流量，原理上不可用 | — | 新增任务时按 `.claude/skills/task-config/SKILL.md` 的控制器限制规则声明 |
-| R8 | **（实测确认）** GFN Chrome 网页版窗口模式下，页面自绘头部（标题条）占据客户区顶部约 26px，游戏视频被下移且按比例缩放，所有固定 ROI 识别失败（实测 InWorld 失败 5563 次、SceneManager 连按 ESC 569 次死循环） | GFN Chrome 窗口模式完全不可用 | 运行前提：16:9 显示器 + F11 全屏（头部消失、视频铺满、帧缩放为干净 1280x720）+ Windows 缩放 100%；文档与 UI 提示中声明 |
+| R8 | **（实测确认）** GFN Chrome 网页版窗口模式下，页面自绘头部（标题条）占据客户区顶部约 26px，游戏视频被下移且按比例缩放，所有固定 ROI 识别失败（实测 InWorld 失败 5563 次、SceneManager 连按 ESC 569 次死循环） | GFN Chrome 窗口模式完全不可用 | 运行前提：16:9 显示器 + F11 全屏（头部消失、视频铺满、帧缩放为干净 1280x720）+ Windows 缩放 100%；文档与 UI 提示中声明。窗口化自动缩放改进方案见 [GFN Chrome 网页版窗口自动缩放 PRD](./gfn-chrome-window-resize-prd.md) |
 
 ## 7. 验收标准
 
