@@ -8,6 +8,7 @@ from .rhythm.feats.repeat_decision import *
 from .rhythm.feats.select_song import *
 from .Common.click import *
 from .Common.resize_game_window import *
+from .Common.gfn_chrome_scene_override import *
 from .realtime_task import *
 from .Navi import *
 from .MapTeleport import *
@@ -40,6 +41,7 @@ __all__ = [
     "AutoSellFish",
     "ClickOverride",
     "ResizeGameWindow",
+    "GfnChromeSceneOverrideSink",
     "AutoTetris",
     "AutoRhythmPlay",
     "AutoRhythmRepeatDecision",
