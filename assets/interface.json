@@ -60,13 +60,13 @@
             "name": "GFN-Chrome",
             "label": "$controller_gfn_chrome_label",
             "type": "Win32",
-            // 客户区被 agent 自动缩放为 1280x(720+页面头部高度)（默认头部 26px，
+            // 客户区被 agent 自动缩放为 1280x(720+页面头部高度)（实测头部 37px，
             // 见 agent/utils/win32_process.py GFN_CHROME_HEADER_HEIGHT）。
             // 不声明 display_short_side/display_raw 时默认短边缩放到 720，会把
-            // 746 高的原始截图连同头部一起等比压缩成 1235x720，画面全局失真。
-            // 显式声明短边=746，使原始截图在缩放成功时 1:1 直通（无失真），
-            // 仅保留头部占用的 26px 垂直偏移（更小范围的已知问题，见 PRD）
-            "display_short_side": 746,
+            // 757 高的原始截图连同头部一起等比压缩，画面全局失真。
+            // 显式声明短边=757，使原始截图在缩放成功时 1:1 直通（无失真、无黑边），
+            // 仅保留头部占用的 37px 垂直偏移（更小范围的已知问题，见 PRD）
+            "display_short_side": 757,
             "win32": {
                 "class_regex": "Chrome_WidgetWin_1",
                 "window_regex": "NTE.*on GeForce NOW",

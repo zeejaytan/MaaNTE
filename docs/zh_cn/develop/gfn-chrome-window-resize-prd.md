@@ -12,7 +12,7 @@
 主 PRD 落地后，GFN 两种形态的现状分化：
 
 - **GFN 原生客户端（`gfn_app`）**：流窗口为无边框 CEF 窗口、客户区即视频。Agent 启动时自动把客户区调整为 1280x720（`resize_client_area(manage_title_bar=False)`），并在缩放成功后提示串流渲染分辨率可能仍未跟随。该路径已实测跑通（2026-07-12 日志包 `MaaNTE-logs-0.0.9-gfn-test-*`，PinkPawHeist 多轮完整运行）。
-- **GFN Chrome 网页版（`gfn_chrome`）**：**窗口化模式完全不可用**（主 PRD R8 实测）。页面自绘头部（标题条，约 26px）占据客户区顶部，游戏视频被下移**且按比例缩放**，所有固定 ROI 识别失败。当前运行前提为"16:9 显示器 + F11 全屏 + Windows 缩放 100%"。
+- **GFN Chrome 网页版（`gfn_chrome`）**：**窗口化模式完全不可用**（主 PRD R8 实测）。页面自绘头部（标题条，实测 37px，见 §2）占据客户区顶部，游戏视频被下移**且按比例缩放**，所有固定 ROI 识别失败。当前运行前提为"16:9 显示器 + F11 全屏 + Windows 缩放 100%"。
 
 F11 全屏前提对非 16:9 显示器用户（16:10、带鱼屏）不成立：全屏后视频上下留黑边，帧几何同样被破坏。这部分用户目前在 Chrome 形态下无解。
 
@@ -20,7 +20,7 @@ F11 全屏前提对非 16:9 显示器用户（16:10、带鱼屏）不成立：�
 
 `agent/utils/win32_process.py` 的 `ensure_game_window_resolution()` gfn_chrome 分支（L671-688）：
 
-1. **缩放目标错误**：把客户区调整为 1280x720。由于头部占掉顶部 ~26px，视频实际被压缩进 1280x694 区域（缩放 + 下移），**主动制造了 R8 描述的坏几何**。
+1. **缩放目标错误**：把客户区调整为 1280x720。由于头部占掉顶部 37px，视频实际被压缩进 1280x683 区域（缩放 + 下移），**主动制造了 R8 描述的坏几何**。
 2. **错误管理标题栏**：未传 `manage_title_bar`，走默认 `True` → `show_title_bar()` 向 Chrome 的自绘无边框窗口强加 `WS_CAPTION`，可能叠加原生标题栏、进一步压缩客户区。
 
 ### 1.3 目标
@@ -40,32 +40,34 @@ F11 全屏前提对非 16:9 显示器用户（16:10、带鱼屏）不成立：�
 | 形态 | 客户区构成 | 客户区 = 1280x720 时 | 客户区 = 1280x(720+H) 时 |
 | --- | --- | --- | --- |
 | GFN 原生客户端 | 客户区 = 视频 | 视频原生 1:1 720p ✅ | —（不适用） |
-| GFN Chrome 窗口化 | 顶部头部 H(~26px) + 视频 | 视频缩放至 1280x694 且下移 ❌（现状） | 视频原生 1:1 720p，但整帧内容相对 ROI 下移 H px ⚠️ |
+| GFN Chrome 窗口化 | 顶部头部 H(37px) + 视频 | 视频缩放至 1280x683 且下移 ❌（现状） | 视频原生 1:1 720p，但整帧内容相对 ROI 下移 H px ⚠️ |
 
 约束条件（决定了 §5 残留问题的性质）：
 
 - 头部在 Chrome 窗口的**客户区内部**（Chrome 自绘无边框窗口），`PrintWindow` 截图无法排除它。
 - MaaFramework Win32 控制器无截图裁剪选项——`MaaCtrlOptionEnum`（`deps/include/MaaFramework/MaaDef.h` L201-212）仅有长/短边缩放与 `ScreenshotUseRawSize`。
-- 1280x746 的截图长边已是 1280，按 MaaFW 默认长边归一化不再缩放 → 帧与客户区 1:1，识别框坐标经控制器映射回客户区仍然一致。因此**识别驱动的点击不受平移影响**，受影响的只有写死的固定坐标（详见 §5.1）。
+- **实测踩坑（0.0.11-gfn-test）**：`interface.json` 未声明的控制器默认 `display_short_side=720`（`deps/tools/interface.schema.json` L412-416），MaaFramework 按**短边**（非长边）把任意原始截图等比缩放到该值。客户区调整为 1280x746 后，若不显式声明 `display_short_side`，MaaFW 仍会把 746 高的原始帧（含头部）压缩到短边=720，导致整帧连头部一起等比失真（1235x720），而非预期的"仅垂直平移"。**必须**在 `interface.json` 的 GFN-Chrome 控制器条目显式声明 `display_short_side = 720+H`，使缩放成功时截图 1:1 直通（见 FR2 补充）。
+- 声明正确的 `display_short_side` 后，识别框坐标经控制器映射回客户区仍然一致，**识别驱动的点击不受平移影响**，受影响的只有写死的固定坐标（详见 §5.1）。
 
-头部高度 H 的测量依据：主 PRD R8 运行时实测约 26px（进程已 `SetProcessDPIAware()`，为物理像素）；`screenshot/NTE window name.png` 可复核。注意 H 随 Windows DPI 缩放与 Chrome 版本变化（见 R2、FR5）。
+头部高度 H 的测量：主 PRD R8 最初目测估计约 26px；**该估计偏小**，经 0.0.12-gfn-test 实测截图（`screenshot/Screenshot 2026-07-12 194145.png`）逐像素测量确认为 **37px**——用 26px 时视频可用高度不足（746-26=720 看似够，但实际头部占用更多），浏览器按 `object-fit: contain` 等比缩小视频以适配剩余高度，两侧各留 10px 黑边（1260x709 而非 1280x720）。用正确的 37px 重新计算（客户区目标改为 1280x757），视频可用高度恢复满 720px，理论上黑边消失。注意 H 随 Windows DPI 缩放与 Chrome 版本变化（见 R2、FR5），当前 37px 为特定环境下的实测值。
 
 ## 3. 功能需求
 
 ### FR1 — 头部高度常量与覆盖参数（`agent/utils/win32_process.py`）
 
-- 新增模块级常量 `GFN_CHROME_HEADER_HEIGHT = 26`（物理像素），注释标明实测来源与 DPI 依赖。
+- 新增模块级常量 `GFN_CHROME_HEADER_HEIGHT = 37`（物理像素，见 §2 实测方法），注释标明实测来源与 DPI 依赖。
 - `ensure_game_window_resolution()` 新增可选参数 `gfn_chrome_header_height`（默认取常量），并由 `resize_game_window` 动作的 `custom_action_param.header_height` 透传（FR4），供 DPI ≠ 100% 的用户手工覆盖。
 
 ### FR2 — gfn_chrome 缩放路径修正（`agent/utils/win32_process.py`）
 
 gfn_chrome 分支对齐 gfn_app 分支的写法：
 
-- 缩放目标改为 `(width, height + H)`，即基准调用下客户区 = 1280x746。
+- 缩放目标改为 `(width, height + H)`，即基准调用下客户区 = 1280x757。
 - 强制 `manage_title_bar=False`：不再向 Chrome 无边框窗口强加 `WS_CAPTION`（修复 §1.2 缺陷 2），`passthrough` 过滤列表同步加入 `manage_title_bar`。
 - 复用现有 `ensure_process_client_size()` / `resize_client_area()`，不新增缩放原语。
 - 优雅降级：缩放未生效时 `reason="gfn_chrome_resize_failed"`、`success` 置 `True`（任务继续），日志输出实际/期望客户区尺寸，引导用户手动调整窗口或退回 F11 全屏（对齐 gfn_app 的 `gfn_app_resize_failed` 语义）。
 - 返回 dict 新增 `"video_size"` 键 =（客户区宽，客户区高 − H），供调用方区分"客户区尺寸"与"有效游戏画面尺寸"。
+- **`interface.json` 配套变更（0.0.12-gfn-test 实测后补充，原 FR2 未预见）**：GFN-Chrome 控制器条目必须显式声明 `"display_short_side": 720 + H`。原因见 §2 实测踩坑——不声明时 MaaFW 默认按短边=720 缩放任意原始截图，会把含头部的 757 高原始帧整体压扁失真，而非仅保留预期的垂直平移。此项是让本 PRD 设计生效的**必要前提**，遗漏会导致画面全局失真（非本 PRD 设计目标的"仅 H px 平移"）。
 
 ### FR3 — Agent 启动检测适配（`agent/main.py::_check_game_resolution`）
 

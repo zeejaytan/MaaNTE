@@ -73,9 +73,11 @@ GFN_CHROME_PROCESS_NAME = "chrome.exe"
 GFN_CHROME_WINDOW_CLASS = "Chrome_WidgetWin_1"
 GFN_CHROME_TITLE_REGEX = r"NTE.*on GeForce NOW"
 # Chrome 网页版页面自绘头部（标题条）高度：物理像素（进程已 SetProcessDPIAware），
-# Windows 缩放 100% 下实测约 26px（geforce-now-support-prd.md R8）。
+# 通过实测截图逐像素测量确认为 37px（screenshot/Screenshot 2026-07-12 194145.png，
+# 早期 geforce-now-support-prd.md R8 记录的 26px 为目测估计，经像素测量证实偏小，
+# 曾导致视频区域高度不足被浏览器等比缩放，两侧出现黑边）。
 # 随 Windows DPI 缩放与 Chrome 版本可能漂移，可经 gfn_chrome_header_height 参数覆盖
-GFN_CHROME_HEADER_HEIGHT = 26
+GFN_CHROME_HEADER_HEIGHT = 37
 # 原生客户端：标题已实测确认（GFNWindowMover 进程选择器截图），与 Chrome 版一致；
 # 窗口类待运行时日志确认（PRD 风险 R3），探测时不过滤类名
 GFN_APP_PROCESS_NAME = "GeForceNOW.exe"
