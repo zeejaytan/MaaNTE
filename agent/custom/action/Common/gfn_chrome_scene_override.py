@@ -37,6 +37,12 @@ _GFN_CHROME_TOP_ANCHORED_ROIS = {
     "ExitButton": (20, 5, 60, 60),
 }
 
+# GFN 串流的视频压缩会软化像素、拉低 TemplateMatch 匹配分（主 PRD 风险 R2）。
+# 0.0.16-gfn-test 实测：EscMenuButton 在正确的下移 ROI 内命中，但分数稳定在
+# 0.665-0.666，低于默认阈值 0.70 导致判定失败。0.60 在实测命中分（≈0.665）
+# 与背景噪声分（≈0.2-0.35）之间留有双向余量。仅 gfn_chrome 会话生效
+GFN_CHROME_TEMPLATE_THRESHOLD = 0.6
+
 # 模块级状态（配合独立 reset 约定）：覆盖只需应用一次；
 # 资源重新加载会清空 override，此时由 resource sink 复位标志以便重新应用
 _override_applied = False
@@ -44,7 +50,10 @@ _override_applied = False
 
 def _build_gfn_chrome_override(header_height):
     return {
-        node_name: {"roi": [x, y + header_height, w, h]}
+        node_name: {
+            "roi": [x, y + header_height, w, h],
+            "threshold": GFN_CHROME_TEMPLATE_THRESHOLD,
+        }
         for node_name, (x, y, w, h) in _GFN_CHROME_TOP_ANCHORED_ROIS.items()
     }
 
