@@ -88,7 +88,9 @@
     "tetris.progress": "[Tetris] Progress: %d/%d",
     "tetris.task_done": "[Tetris] Task complete",
     "tetris.vitality_exhausted": "[Tetris] Vitality exhausted, task complete",
-    "gfn.mode_chrome_detected": "GeForce NOW (Chrome) window detected; foreground mode only",
+    "gfn.mode_chrome_detected": "GeForce NOW (Chrome) window detected; foreground mode only, the window will be resized automatically",
     "gfn.mode_app_detected": "GeForce NOW client window detected; foreground mode only",
-    "gfn.app_resize_failed": "GeForce NOW client window resize did not take effect; set the streaming resolution to %dx%d in GFN settings, or resize the window to that size with a window tool"
+    "gfn.app_resize_failed": "GeForce NOW client window resize did not take effect; set the streaming resolution to %dx%d in GFN settings, or resize the window to that size with a window tool",
+    "gfn.chrome_resize_failed": "GeForce NOW (Chrome) window resize did not take effect; resize the window client area to %dx%d manually, or run in F11 fullscreen on a 16:9 monitor",
+    "gfn.chrome_stream_resolution_hint": "Window resized; if recognition still fails, fix the streaming resolution to %dx%d in GFN settings and restart the game session"
 }

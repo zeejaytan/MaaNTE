@@ -460,6 +460,7 @@ def _check_game_resolution():
         GAME_WINDOW_MODE_GFN_APP,
         GAME_WINDOW_MODE_GFN_CHROME,
         GAME_WINDOW_MODE_NOT_FOUND,
+        GFN_CHROME_HEADER_HEIGHT,
         ensure_game_window_resolution,
         get_client_size,
         refresh_game_window_mode,
@@ -484,15 +485,23 @@ def _check_game_resolution():
 
     w, h = size
     baseline_w, baseline_h = screen.BASELINE_WIDTH, screen.BASELINE_HEIGHT
+    # gfn_chrome 的客户区 = 页面头部 + 视频：客户区基准需加上头部高度，
+    # 缩放系数与"正常"判定均以头部下方的有效视频尺寸为准
+    header_offset = (
+        GFN_CHROME_HEADER_HEIGHT if mode == GAME_WINDOW_MODE_GFN_CHROME else 0
+    )
+    client_target_w = baseline_w
+    client_target_h = baseline_h + header_offset
     tolerance = 2
     did_resize = False
 
-    if abs(w - baseline_w) > tolerance or abs(h - baseline_h) > tolerance:
+    if abs(w - client_target_w) > tolerance or abs(h - client_target_h) > tolerance:
         did_resize = True
         logger.info(
-            f"当前窗口分辨率 {w}x{h} 与基准 {baseline_w}x{baseline_h} 不符，尝试自动调整"
+            f"当前窗口客户区 {w}x{h} 与基准 {client_target_w}x{client_target_h} 不符，尝试自动调整"
         )
         try:
+            # gfn_chrome 模式在 ensure_game_window_resolution 内部补偿头部高度
             result = ensure_game_window_resolution(baseline_w, baseline_h)
         except Exception:
             logger.exception("自动调整窗口分辨率时发生异常")
@@ -501,7 +510,9 @@ def _check_game_resolution():
             logger.debug(
                 f"窗口分辨率调整结果: mode={result.get('mode')}, "
                 f"reason={result.get('reason')}, "
-                f"before={result.get('before')}, after={result.get('after')}"
+                f"before={result.get('before')}, after={result.get('after')}, "
+                f"header_height={result.get('header_height')}, "
+                f"video_size={result.get('video_size')}"
             )
             after = result.get("after")
             if after is not None:
@@ -511,27 +522,49 @@ def _check_game_resolution():
         if final_size is not None:
             w, h = final_size
 
-    screen.update_screen_size(w, h)
+    # 缩放系数以有效视频尺寸为准：gfn_chrome 的头部偏差是平移而非缩放，
+    # 用原始客户区尺寸会得到 scale_y≈1.036 的错误缩放模型
+    video_w, video_h = w, max(0, h - header_offset)
+    screen.update_screen_size(video_w, video_h)
     scale_x, scale_y = screen.scaling_factors()
 
-    if abs(w - baseline_w) <= tolerance and abs(h - baseline_h) <= tolerance:
-        logger.info(
-            f"当前窗口分辨率: {w}x{h} [正常], scale=({scale_x:.3f}, {scale_y:.3f})"
-        )
-        if did_resize and mode == GAME_WINDOW_MODE_GFN_APP:
+    if (
+        abs(video_w - baseline_w) <= tolerance
+        and abs(video_h - baseline_h) <= tolerance
+    ):
+        if header_offset:
+            logger.info(
+                f"当前窗口客户区 {w}x{h}（有效视频 {video_w}x{video_h}，"
+                f"头部 {header_offset}px）[正常], scale=({scale_x:.3f}, {scale_y:.3f})"
+            )
+        else:
+            logger.info(
+                f"当前窗口分辨率: {w}x{h} [正常], scale=({scale_x:.3f}, {scale_y:.3f})"
+            )
+        if did_resize and mode in (
+            GAME_WINDOW_MODE_GFN_APP,
+            GAME_WINDOW_MODE_GFN_CHROME,
+        ):
             # GFN 串流渲染分辨率在会话建立时确定：窗口缩放只改变本地窗口，
             # 已在串流中的会话仍按原分辨率（如 1920x1200）云端渲染后缩放显示，
             # 画面内 UI 尺寸/位置与 1280x720 基准不符，模板匹配会系统性失败。
             logger.warning(
-                "GFN 窗口已调整为 1280x720，但若游戏会话在调整前已开始串流，"
+                "GFN 窗口已调整为基准尺寸，但若游戏会话在调整前已开始串流，"
                 "云端仍按原分辨率渲染，识别可能失败。若任务无法识别画面，请在 "
                 "GeForce NOW 设置中将串流分辨率固定为 1280x720 后重启游戏会话，"
-                "或保持窗口为 1280x720 时再启动游戏。"
+                "或保持窗口为基准尺寸时再启动游戏。"
             )
     elif mode == GAME_WINDOW_MODE_GFN_APP:
         logger.warning(
             f"自动调整窗口分辨率未生效，当前 {w}x{h}，scale=({scale_x:.3f}, {scale_y:.3f})。"
             "请在 GeForce NOW 客户端设置中将串流分辨率设为 1280x720，否则部分功能可能异常。"
+        )
+    elif mode == GAME_WINDOW_MODE_GFN_CHROME:
+        logger.warning(
+            f"自动调整窗口分辨率未生效，当前客户区 {w}x{h}（期望 "
+            f"{client_target_w}x{client_target_h}），scale=({scale_x:.3f}, {scale_y:.3f})。"
+            "请手动将窗口客户区调整为期望尺寸，或在 16:9 显示器上使用 F11 全屏运行，"
+            "否则部分功能可能异常。"
         )
     else:
         logger.warning(

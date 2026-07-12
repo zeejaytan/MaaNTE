@@ -86,7 +86,9 @@
     "tetris.progress": "[泯除方块] 进度: %d/%d",
     "tetris.task_done": "[泯除方块] 任务完成",
     "tetris.vitality_exhausted": "[泯除方块] 活力耗尽，任务完成",
-    "gfn.mode_chrome_detected": "检测到 GeForce NOW（Chrome 网页版）窗口，仅支持前台模式运行",
+    "gfn.mode_chrome_detected": "检测到 GeForce NOW（Chrome 网页版）窗口，仅支持前台模式运行，将自动调整窗口尺寸",
     "gfn.mode_app_detected": "检测到 GeForce NOW 客户端窗口，仅支持前台模式运行",
-    "gfn.app_resize_failed": "GeForce NOW 客户端窗口缩放未生效，请在 GFN 设置中将串流分辨率设为 %dx%d，或用窗口工具将窗口调整为该尺寸"
+    "gfn.app_resize_failed": "GeForce NOW 客户端窗口缩放未生效，请在 GFN 设置中将串流分辨率设为 %dx%d，或用窗口工具将窗口调整为该尺寸",
+    "gfn.chrome_resize_failed": "GeForce NOW（Chrome 网页版）窗口缩放未生效，请手动将窗口客户区调整为 %dx%d，或在 16:9 显示器上使用 F11 全屏运行",
+    "gfn.chrome_stream_resolution_hint": "窗口已调整完成；若画面识别仍失败，请在 GFN 设置中将串流分辨率固定为 %dx%d 后重启游戏会话"
 }
