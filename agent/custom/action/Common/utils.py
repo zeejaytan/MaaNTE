@@ -2,6 +2,26 @@ import cv2
 import time
 import numpy as np
 
+# GFN 云游戏放宽：串流画面模板分数整体偏低约 0.1~0.15，云端模式下统一下调模板匹配阈值。
+# 导入做保护：is_cloud_mode 依赖 Windows-only 的 win32_process；非 Windows 环境回退为桌面行为。
+try:
+    from utils.win32_process import is_cloud_mode
+except Exception:  # pragma: no cover - 非 Windows / 导入失败时回退
+
+    def is_cloud_mode():
+        return False
+
+
+CLOUD_THRESHOLD_RELAX = 0.15
+CLOUD_THRESHOLD_FLOOR = 0.40
+
+
+def effective_match_threshold(min_similarity):
+    """云游戏模式下放宽模板匹配阈值，并设下限以避免误匹配。"""
+    if is_cloud_mode():
+        return max(CLOUD_THRESHOLD_FLOOR, min_similarity - CLOUD_THRESHOLD_RELAX)
+    return min_similarity
+
 
 def get_image(controller):
     job = controller.post_screencap()
@@ -65,6 +85,7 @@ def match_template_in_region(
     np.clip(res, 0.0, 1.0, out=res)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-    if max_val >= min_similarity:
+    threshold = effective_match_threshold(min_similarity)
+    if max_val >= threshold:
         return True, max_val, x1 + max_loc[0], y1 + max_loc[1]
     return False, max_val, 0, 0

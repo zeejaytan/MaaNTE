@@ -125,6 +125,182 @@
         "rate_limit": 0
     },
 
+    // GFN 云游戏：钓鱼买饵/卖鱼/商店等 Pipeline 层模板匹配统一放宽阈值
+    // （默认 0.70→0.50，原严格 0.80→0.60）。奥托钓鱼小游戏内部识别由
+    // agent 侧 match_template_in_region 在云端模式自动放宽，无需在此覆盖。
+    "FishNewChooseGeneralBait": {
+        "desc": "找到并选中万能鱼饵",
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    389,
+                    293,
+                    494,
+                    135
+                ],
+                "template": "Fish/FishGeneralBait.png",
+                "threshold": 0.5
+            }
+        },
+        "next": [
+            "[JumpBack]FishNewBaitDetail",
+            "FishNewUseBait",
+            "FishNewGotoBuyBait",
+            "FishNewBaitExit"
+        ],
+        "on_error": [
+            "[Anchor]FishNewErrorRestart"
+        ]
+    },
+
+    "FishNewFishingMasterExit": {
+        "desc": "从海上钓客退回钓鱼游戏界面",
+        "recognition": "TemplateMatch",
+        "roi": [
+            0,
+            0,
+            80,
+            80
+        ],
+        "template": [
+            "Fish/FishSeaAngler.png"
+        ],
+        "action": "ClickKey",
+        "key": [
+            27
+        ],
+        "next": [
+            "[Anchor]FishNewRestart"
+        ],
+        "on_error": [
+            "[Anchor]FishNewErrorRestart"
+        ],
+        "threshold": 0.5
+    },
+
+    "FishNewFishingMasterSwitchToPage2": {
+        "desc": "切换到海上钓客第二页",
+        "recognition": "TemplateMatch",
+        "roi": [
+            59,
+            241,
+            78,
+            69
+        ],
+        "template": [
+            "Fish/FishSellFishPage2.png"
+        ],
+        "action": "Click",
+        "pre_wait_freezes": 200,
+        "post_wait_freezes": 200,
+        "next": [
+            "FishNewFishingMasterPage2Submit",
+            "FishNewSellFishNoFish"
+        ],
+        "on_error": [
+            "[Anchor]FishNewErrorRestart"
+        ],
+        "threshold": 0.5
+    },
+
+    "FishNewStoreChooseGeneralBait": {
+        "desc": "商店界面选择万能鱼饵",
+        "recognition": "TemplateMatch",
+        "roi": [
+            26,
+            81,
+            418,
+            585
+        ],
+        "template": [
+            "Fish/FishStoreGeneralBait.png"
+        ],
+        "green_mask": true,
+        "order_by": "Score",
+        "action": "Click",
+        "next": [
+            "FishNewStoreChooseMaxSuccess",
+            "[JumpBack]FishNewStoreChooseMax"
+        ],
+        "on_error": [
+            "[Anchor]FishNewErrorRestart"
+        ],
+        "threshold": 0.5
+    },
+
+    "FishNewStoreChooseMax": {
+        "desc": "商店界面点击最多按钮",
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1200,
+                    617,
+                    36,
+                    36
+                ],
+                "template": [
+                    "Fish/FishStoreMax.png",
+                    "Fish/FishStoreMaxGrey.png"
+                ],
+                "threshold": 0.5
+            }
+        },
+        "action": "Click",
+        "pre_delay": 500
+    },
+
+    "FishNewOnStore": {
+        "desc": "到达商店界面",
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    0,
+                    0,
+                    80,
+                    80
+                ],
+                "template": [
+                    "Fish/FishFishingTackleShop.png"
+                ],
+                "threshold": 0.6
+            }
+        },
+        "next": [
+            "FishNewStoreChooseGeneralBait"
+        ],
+        "on_error": [
+            "[Anchor]FishNewErrorRestart"
+        ]
+    },
+
+    "FishChooseGeneralBait": {
+        "desc": "找到并选中万能鱼饵：后续根据右侧按钮是“更换”还是“购买”决定分支",
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    389,
+                    293,
+                    494,
+                    135
+                ],
+                "template": "Fish/FishGeneralBait.png",
+                "threshold": 0.6
+            }
+        },
+        "action": "Click",
+        "post_wait_freezes": 200,
+        "next": [
+            "[JumpBack]FishBaitDetail",
+            "FishUseBait",
+            "FishGotoBuyBait",
+            "FishBaitExit"
+        ]
+    },
+
     "PinkPawHeist_OCR_Join": {
         // GFN 下对话选项列表整体上移约 25px，原 ROI [869,313,304,51] 落在「兑换商店」行，
         // OCR 读不到「我要参加」。动作为 ClickKey(F) 的确认门，命中位置无关紧要，

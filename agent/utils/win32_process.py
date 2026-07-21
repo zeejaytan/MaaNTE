@@ -360,6 +360,19 @@ def get_game_window_mode(refresh_if_unknown=True):
     return _detected_game_mode
 
 
+def is_cloud_mode():
+    """是否运行在 GFN 云游戏窗口（原生客户端或 Chrome 网页版）。
+
+    GFN 串流经过重编码 + 强制画质预设，且 HUD 图标为半透明叠加层，模板匹配分数
+    整体较桌面端低约 0.1~0.15。自定义动作（如钓鱼小游戏）中的 Python 模板匹配据此
+    统一放宽阈值。只读缓存状态，不触发探测：探测未完成时返回 False（回退桌面行为）。
+    """
+    return _detected_game_mode in (
+        GAME_WINDOW_MODE_GFN_APP,
+        GAME_WINDOW_MODE_GFN_CHROME,
+    )
+
+
 def reset_game_window_mode():
     """清空模块级探测状态，下次 get_game_window_mode 会重新探测。"""
     global _detected_game_mode, _detected_game_hwnd
