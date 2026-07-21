@@ -57,6 +57,33 @@
         ]
     },
 
+    "FishSceneOnFishPrepare": {
+        // GFN 下钓鱼准备界面标题「钓鱼准备」较桌面端上移约 24px，原 ROI [821,39,252,51]
+        // 落在下方的钓点名（如「水菱湖钓点」）上，读不到标题。上移并放宽 ROI 覆盖标题；
+        // OCR 按 expected 过滤，捕获到多余文字无害。
+        "desc": "判断正在钓鱼准备界面（GFN ROI 上移覆盖「钓鱼准备」标题）",
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    775,
+                    15,
+                    165,
+                    50
+                ],
+                "expected": [
+                    "钓鱼准备",
+                    "釣魚準備",
+                    "(?i)Fishing\\s*Preparations",
+                    "釣り準備"
+                ]
+            }
+        },
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 0
+    },
+
     "PinkPawHeist_OCR_Join": {
         // GFN 下对话选项列表整体上移约 25px，原 ROI [869,313,304,51] 落在「兑换商店」行，
         // OCR 读不到「我要参加」。动作为 ClickKey(F) 的确认门，命中位置无关紧要，
