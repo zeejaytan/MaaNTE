@@ -1,0 +1,95 @@
+{
+    // GFN 云游戏专用覆盖层。
+    // 通过 interface.json 中「官服-GFN」资源包以 [resource/base, resource/gfn_override]
+    // 顺序加载，后加载的同名节点覆盖 base，仅在选择该资源包时生效，不影响桌面端。
+    //
+    // 背景：GeForce NOW 串流经过重编码 + 强制画质预设（NVIDIA 已公开承认云端无法进入
+    // 游戏内画质设置），HUD 图标为半透明叠加层，导致模板匹配分数整体较桌面端低约 0.1，
+    // 稳定低于为原生客户端标定的默认阈值 0.70。实测（1280x720 干净截图）：
+    //   EscMenuButton  : 0.65（钓鱼台）/ 0.77（粉爪大厅）
+    //   TasksMenuButton: 0.46（各场景一致）
+    // 重新采集 GFN 模板无法跨场景泛化（半透明图标随背景变化），故此处放宽阈值，
+    // 依赖 InWorld = And[Esc, Tasks] 双按钮固定 ROI 同时命中来抑制误报。
+
+    "EscMenuButton": {
+        "desc": "大世界中的ESC菜单按钮（GFN 阈值放宽 0.70→0.60）",
+        "recognition": "TemplateMatch",
+        "roi": [
+            1208,
+            5,
+            60,
+            60
+        ],
+        "template": [
+            "Common/Button/InWorld/EscPhone.png",
+            "Common/Button/InWorld/EscPhoneWithRedDot.png"
+        ],
+        "green_mask": true,
+        "threshold": 0.6,
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 0,
+        "next": [
+            "AltClickEscMenuButtonKeyDown"
+        ]
+    },
+
+    "TasksMenuButton": {
+        "desc": "大世界中的任务菜单按钮（GFN 阈值放宽 0.70→0.42）",
+        "recognition": "TemplateMatch",
+        "roi": [
+            0,
+            105,
+            60,
+            60
+        ],
+        "template": [
+            "Common/Button/InWorld/Tasks.png",
+            "Common/Button/InWorld/TasksWithRedDot.png"
+        ],
+        "green_mask": true,
+        "threshold": 0.42,
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 0,
+        "next": [
+            "AltClickTasksMenuButtonKeyDown"
+        ]
+    },
+
+    "PinkPawHeist_OCR_Join": {
+        // GFN 下对话选项列表整体上移约 25px，原 ROI [869,313,304,51] 落在「兑换商店」行，
+        // OCR 读不到「我要参加」。动作为 ClickKey(F) 的确认门，命中位置无关紧要，
+        // 故纵向放宽 ROI 以同时覆盖桌面端(y313)与 GFN(y288) 两个位置。
+        "desc": "OCR识别我要参加（GFN ROI 纵向放宽以适配对话选项上移）",
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我加入。",
+                    "(?i)Count\\s*me\\s*in\\s*\\.",
+                    "参加する",
+                    "我要参加",
+                    "I'm in",
+                    "참가하기"
+                ],
+                "roi": [
+                    869,
+                    283,
+                    320,
+                    90
+                ]
+            }
+        },
+        "pre_delay": 500,
+        "action": {
+            "type": "ClickKey",
+            "param": {
+                "key": 70
+            }
+        },
+        "next": [
+            "PinkPawHeist_SkipStory_Join"
+        ]
+    }
+}

@@ -85,6 +85,16 @@
             "path": [
                 "resource/base"
             ]
+        },
+        {
+            // GFN 云游戏专用：base 之上叠加 gfn_override 覆盖层（放宽 InWorld 按钮阈值、
+            // 修正粉爪加入按钮 ROI）。使用 GFN-App / GFN-Chrome 控制器时请选择此资源包。
+            "name": "官服-GFN",
+            "label": "$resource_gfn_label",
+            "path": [
+                "resource/base",
+                "resource/gfn_override"
+            ]
         }
     ],
     "agent": {

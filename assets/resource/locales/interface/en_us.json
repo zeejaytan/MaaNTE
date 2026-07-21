@@ -9,6 +9,7 @@
     "controller_gfn_chrome_label": "Cloud - GeForce NOW (Chrome)",
     "controller_gfn_app_label": "Cloud - GeForce NOW (App)",
     "resource_official_label": "Official Server",
+    "resource_gfn_label": "Official Server - GFN Cloud",
     "group.Daily.label": "Daily Tasks",
     "group.CityTycoon.label": "City Tycoon",
     "group.HethereauHobbies.label": "Hethereau Hobbies",
