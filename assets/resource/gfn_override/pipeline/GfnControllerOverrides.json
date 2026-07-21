@@ -84,6 +84,47 @@
         "rate_limit": 0
     },
 
+    "FishSceneHookButton": {
+        // 钓鱼小游戏鱼钩按钮(F)。GFN 半透明图标模板匹配约 0.60，低于默认 0.70。
+        "desc": "鱼钩按钮(F)（GFN 阈值放宽 0.70→0.50）",
+        "recognition": "TemplateMatch",
+        "roi": [
+            1137,
+            600,
+            100,
+            100
+        ],
+        "template": [
+            "Fish/FishGameSign.png",
+            "Fish/FishGameSignThinner.png"
+        ],
+        "green_mask": true,
+        "threshold": 0.5,
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 0
+    },
+
+    "FishSceneBaitButton": {
+        // 钓鱼小游戏鱼饵按钮(E)。GFN 下约 0.71 勉强过线，放宽阈值留余量。
+        "desc": "鱼饵按钮(E)（GFN 阈值放宽 0.70→0.50）",
+        "roi": [
+            1044,
+            600,
+            100,
+            100
+        ],
+        "recognition": "TemplateMatch",
+        "template": [
+            "Fish/FishGameSign2.png"
+        ],
+        "green_mask": true,
+        "threshold": 0.5,
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 0
+    },
+
     "PinkPawHeist_OCR_Join": {
         // GFN 下对话选项列表整体上移约 25px，原 ROI [869,313,304,51] 落在「兑换商店」行，
         // OCR 读不到「我要参加」。动作为 ClickKey(F) 的确认门，命中位置无关紧要，
