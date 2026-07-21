@@ -68,14 +68,17 @@ class AutoFish(CustomAction):
         KEY_F = 70
         KEY_ESC = 27
 
-        success_region = [520, 160, 265, 30]
+        # NOTE: 原本这些 region 与模板等大（slack≈0），matchTemplate 无滑动余量。
+        # GFN 云端 UI 会有几像素位移，导致分数骤降（实测 X 按钮 0.23 vs 放大后 0.89）。
+        # 统一为模板四周留出余量（放大 region 对桌面端安全：仍取区域内最佳匹配位置）。
+        success_region = [505, 152, 295, 46]  # was [520,160,265,30]
         settlement_region = [566, 642, 150, 23]
         game_region = [401, 39, 481, 24]
-        escape_region = [590, 349, 99, 22]
+        escape_region = [575, 337, 129, 46]  # was [590,349,99,22]
         prepare_region = [908, 602, 339, 52]
         fish_game_sign_region = [1141, 609, 87, 84]
-        fish_game_sign_region_2 = [1224, 27, 30, 30]
-        need_bait_region = [610, 350, 141, 21]
+        fish_game_sign_region_2 = [1204, 7, 70, 70]  # was [1224,27,30,30]
+        need_bait_region = [595, 338, 171, 45]  # was [610,350,141,21]
         deadzone = max(1, int(round(15 * screen.scaling_factors()[0])))
 
         success_region = screen.map_rect(success_region)
